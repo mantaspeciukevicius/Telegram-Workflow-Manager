@@ -4,4 +4,4 @@ Customized and deployed an open-source Telegram forwarding service on an Ubuntu 
 
 The portfolio focuses on deployment, reliability and operational visibility. The original TGCF project is credited; this is an extension, not an entirely original Telegram engine. Screenshots use synthetic data and contain no private chat identities or account credentials.
 
-Repository: https://github.com/mantaspeciukevicius/telegram-relay-dashboard
+Repository: https://github.com/mantaspeciukevicius/message-workflow-manager

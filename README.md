@@ -1,4 +1,4 @@
-# Telegram Relay Dashboard
+# Message Workflow Manager
 
 A Docker-deployed, multi-account Telegram forwarding and history-copying service with a Streamlit control panel. This project extends [aahnik/tgcf](https://github.com/aahnik/tgcf); upstream authorship and the MIT license are preserved in [NOTICE](NOTICE.md) and [LICENSE](LICENSE).
 
@@ -18,8 +18,8 @@ This is a forwarding service, not a chatbot. It depends on authorized Telegram a
 ## Quick start
 
 ```sh
-git clone https://github.com/mantaspeciukevicius/telegram-relay-dashboard.git
-cd telegram-relay-dashboard
+git clone https://github.com/mantaspeciukevicius/message-workflow-manager.git
+cd message-workflow-manager
 python3 scripts/configure.py
 # Optional: set LAN_IP in a root .env to expose the UI on your trusted LAN.
 docker compose up -d --build
