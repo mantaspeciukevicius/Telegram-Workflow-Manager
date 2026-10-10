@@ -1,0 +1,8 @@
+.git
+app/.env
+app/*.json
+app/.*.json
+app/*.session*
+app/*.log
+app/.tgcf_multi
+**/__pycache__

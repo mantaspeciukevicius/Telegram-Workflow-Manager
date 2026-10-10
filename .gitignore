@@ -1,0 +1,11 @@
+app/.env
+app/*.json
+app/.*.json
+app/*.session*
+app/*.log
+app/*.txt
+app/.tgcf_multi/
+app/*.lock
+__pycache__/
+*.pyc
+.env

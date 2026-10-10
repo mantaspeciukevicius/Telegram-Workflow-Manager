@@ -1,0 +1,92 @@
+services:
+
+  tgcf-web:
+    build: .
+    container_name: tgcf-web
+    restart: unless-stopped
+    stop_grace_period: 60s
+
+    working_dir: /opt/my-tgcf
+
+    environment:
+      TZ: Europe/Vilnius
+      PYTHONPATH: /opt/my-tgcf/vendor
+      STREAMLIT_SERVER_ADDRESS: 0.0.0.0
+      STREAMLIT_SERVER_PORT: "8501"
+
+    volumes:
+      - ./app:/opt/my-tgcf
+
+    ports:
+      - "${LAN_IP:-127.0.0.1}:8501:8501"
+
+    command: ["tgcf-web"]
+
+
+  tgcf-user1:
+    build: .
+    container_name: tgcf-user1
+    restart: unless-stopped
+    stop_grace_period: 60s
+
+    working_dir: /opt/my-tgcf
+
+    environment:
+      TZ: Europe/Vilnius
+      PYTHONPATH: /opt/my-tgcf/vendor
+
+    command: ["/runner/run-user.sh", "user1", "30"]
+
+    volumes:
+      - ./app:/opt/my-tgcf
+      - ./run-user.sh:/runner/run-user.sh:ro
+
+
+  tgcf-user2:
+    build: .
+    container_name: tgcf-user2
+    restart: unless-stopped
+    stop_grace_period: 60s
+
+    working_dir: /opt/my-tgcf
+
+    environment:
+      TZ: Europe/Vilnius
+      PYTHONPATH: /opt/my-tgcf/vendor
+
+    volumes:
+      - ./app:/opt/my-tgcf
+      - ./run-user.sh:/runner/run-user.sh:ro
+
+    command: ["/runner/run-user.sh", "user2", "60"]
+
+  tgcf-user3:
+    build: .
+    container_name: tgcf-user3
+    restart: unless-stopped
+    stop_grace_period: 60s
+
+    working_dir: /opt/my-tgcf
+
+    environment:
+      TZ: Europe/Vilnius
+      PYTHONPATH: /opt/my-tgcf/vendor
+
+    volumes:
+      - ./app:/opt/my-tgcf
+      - ./run-user.sh:/runner/run-user.sh:ro
+
+    command: ["/runner/run-user.sh", "user3", "90"]
+
+  tgcf-extra-users:
+    image: tgcf-tgcf-user1:latest
+    container_name: tgcf-extra-users
+    restart: unless-stopped
+    stop_grace_period: 60s
+    working_dir: /opt/my-tgcf
+    environment:
+      TZ: Europe/Vilnius
+      PYTHONPATH: /opt/my-tgcf/vendor
+    volumes:
+      - ./app:/opt/my-tgcf
+    command: ["python", "/opt/my-tgcf/worker_service.py", "--extras"]
