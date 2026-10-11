@@ -39,3 +39,4 @@ docker run --rm --network none --read-only --tmpfs /tmp:size=64m \
   tgcf-tgcf-web python /check.py
 ```
 
+Priority settings are saved atomically under the shared configuration lock.
