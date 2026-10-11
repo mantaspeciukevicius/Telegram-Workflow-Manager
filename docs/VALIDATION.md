@@ -6,7 +6,7 @@ No end-to-end Telegram forwarding test is performed for this public release: it 
 
 ## Chat coverage and shared-dump update
 
-29 offline automated tests cover source/receiver distinctions, pauses, worker freshness/errors, history boundaries, username/ID aliases, bulk route creation, account assignment, preserving existing topic destinations and offsets, idempotent retries, conflict handling, loop detection, private settings and actual worker route selection. They use temporary directories and synthetic sessions with network disabled.
+41 offline automated tests cover source/receiver distinctions, pauses, worker freshness/errors, history boundaries, username/ID aliases, bulk route creation, account assignment, preserving existing topic destinations and offsets, idempotent retries, conflict handling, loop detection, private settings and actual worker route selection. They use temporary directories and synthetic sessions with network disabled.
 
 A real Chromium/Streamlit test exercises the full Connections page: selecting a joined dump chat, adding a new source and also adding the dump to an existing topic route, retaining the original destination/offset, and rendering on desktop/mobile. Public screenshots come only from this isolated demo; Telegram queries are replaced with offline fixtures. Production verification checks the authenticated page, unchanged route/account/pause state and continued worker containers. It does not send messages or claim an end-to-end Telegram delivery test.
 
@@ -25,3 +25,17 @@ docker run --rm --network none --read-only --tmpfs /tmp:size=64m \
 The unused-chat filter has offline checks for source and destination coverage, username/URL aliases, disabled routes, all destinations, and preservation of input data.
 
 The actual Streamlit picker was verified with synthetic chats: the checked filter hides both sources and destinations; clearing it makes destination chats selectable again. No Telegram messages were sent.
+
+Scheduling adds 12 offline checks covering 70/30 fairness with 1–200 dump routes, short normal turns, per-queue rotation, spare capacity, restart checkpoints, 50% custom shares, classification overrides, setting bounds, run-once and dynamic removal. The actual history runner was exercised with synthetic subprocesses and verified saved offsets without Telegram access.
+
+Run the synthetic subprocess integration separately (read-only source, isolated network):
+
+```sh
+docker run --rm --network none --read-only --tmpfs /tmp:size=64m \
+  -e PYTHONPATH=/vendor \
+  -v "$PWD/app/vendor:/vendor:ro" \
+  -v "$PWD/app/tgcf_single_runner.py:/actual-runner.py:ro" \
+  -v "$PWD/tests/check_runner_integration.py:/check.py:ro" \
+  tgcf-tgcf-web python /check.py
+```
+

@@ -13,7 +13,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 sys.path.insert(0, "/opt/my-tgcf/vendor")
-from tgcf.state_store import locked, atomic_json
+from tgcf.state_store import locked, atomic_json, read_json
 
 ROOT = Path("/opt/my-tgcf")
 MASTER = ROOT / "tgcf.config.json"
@@ -400,6 +400,12 @@ def sync_offsets(config_path):
         return
 
     with master_lock():
+        schedule_path = ROOT / ('.tgcf_schedule_' + account + '.json')
+        schedule_state = read_json(schedule_path, {})
+        pending = schedule_state.get('pending')
+        if pending and any(f.get('connection_id') == pending['key'] for f in child.get('forwards', [])) and 'started_at' in globals():
+            pending['elapsed'] = max(0, time.monotonic() - started_at)
+            atomic_json(schedule_path, schedule_state)
         runtime = load_optional_json(RUNTIME_FILE, {})
         if account in runtime:
             runtime[account]['updated_at'] = time.time()
@@ -623,6 +629,31 @@ if not forwards:
 
     raise SystemExit(0)
 
+# Weighted queues reload routes, pauses and ownership before every turn.
+from tgcf.backup_schedule import scheduled_names
+
+def available_routes():
+    latest_master = load_json(MASTER)
+    latest_accounts = load_json(ACCOUNTS)
+    paused_routes = load_optional_json(ROOT / '.tgcf_paused.json', {})
+    return [f for f in get_forwards(latest_master, latest_accounts, account)
+            if not paused_routes.get(f['connection_id'])]
+
+turns = scheduled_names(ROOT, account, available_routes, once=JOB.get('mode') == 'once')
+
+def turn_names():
+    global MAX_CONNECTION_RUNTIME, accounts, timed_out
+    try: turn = next(turns)
+    except StopIteration: return
+    while True:
+        name, MAX_CONNECTION_RUNTIME, kind = turn
+        accounts = load_json(ACCOUNTS)
+        timed_out = False
+        before = time.monotonic()
+        yield name
+        try: turn = turns.send((time.monotonic() - before, globals().get('timed_out', False)))
+        except StopIteration: return
+
 # Keep the order from MASTER.
 connection_names = [
     connection_name(
@@ -664,8 +695,7 @@ print(
 )
 
 print(
-    f"{account}: maximum runtime per connection = "
-    f"{MAX_CONNECTION_RUNTIME // 3600} hours",
+    f"{account}: weighted normal/dump scheduling enabled; limits reload each turn",
     flush=True,
 )
 
@@ -681,7 +711,7 @@ with open(
 ) as logfile:
 
     for position, name in enumerate(
-        connection_names,
+        turn_names(),
         start=1,
     ):
         if STOP:
@@ -716,7 +746,7 @@ with open(
             name
         ):
             print(
-                f"{account}: [{position}/{len(connection_names)}] "
+                f"{account}: [turn {position}] "
                 f"{name} is PAUSED - skipping",
                 flush=True,
             )
@@ -739,6 +769,7 @@ with open(
             newly_applied
         )
 
+        timed_out = False
         # Always reload MASTER immediately before this connection.
         # This guarantees we use its newest synchronized offset.
         with master_lock():
@@ -817,7 +848,7 @@ with open(
         )
 
         print(
-            f"{account}: [{position}/{len(connection_names)}] "
+            f"{account}: [turn {position}] "
             f"starting {name} "
             f"from offset {start_offset}",
             flush=True,
@@ -936,7 +967,7 @@ with open(
 
                 print(
                     f"{account}: {name} reached "
-                    f"5-hour time slice; saving progress "
+                    f"{MAX_CONNECTION_RUNTIME // 60}-minute time slice; saving progress "
                     f"and moving to next connection",
                     flush=True,
                 )
@@ -1029,7 +1060,7 @@ with open(
             update_runtime(
                 "rotated",
                 connection=name,
-                message="5-hour time slice reached",
+                message=f"{MAX_CONNECTION_RUNTIME // 60}-minute time slice reached",
             )
 
 

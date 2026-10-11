@@ -78,3 +78,11 @@ Services use `restart: unless-stopped`. For a consistent backup, pause jobs, let
 See [setup and troubleshooting](docs/HOWTO.md), [validation](docs/VALIDATION.md), and the [LinkedIn project summary](docs/PORTFOLIO.md).
 
 Quick backup to dump now defaults to **Hide chats used as sources or destinations**. This excludes chats referenced anywhere in configured routes, including disabled routes and routes assigned to other accounts. Uncheck it to show available destinations; also enable the existing-backups option when adding the dump to an existing source route. Existing destinations and offsets are preserved.
+
+### History scheduling priorities
+
+Backup Control → **History backup priorities · normal / dump** configures the normal time share (default 70%, minimum 50%), normal session limit (70 minutes), dump session limit (30 minutes), and which routes belong to the lower-priority queue. Settings apply at the next turn. Newly created quick-dump routes default to dump priority; existing topic routes remain normal when another destination is appended.
+
+Each account schedules its own two queues. Actual elapsed time determines fairness, independently of route counts. Within each queue, routes take turns. While both queues have runnable history work, the long-run share follows the configured percentage; individual turns can temporarily differ. Spare capacity is available to the other queue when a queue is empty or finished. Completed routes have a five-minute cooldown; timed-out routes resume from their saved offsets. Paused, disabled and reassigned routes are filtered before each turn. Run-once visits every selected route once; live forwarding is unchanged.
+
+Queue usage, interrupted-turn checkpoints and cursors persist in private sidecars. No offset resets or Telegram rate-limit bypasses are introduced.

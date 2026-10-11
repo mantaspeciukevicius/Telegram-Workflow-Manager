@@ -77,6 +77,8 @@ def connection_rows(master, accounts, runtime, history, activity, users, paused,
 
 def dashboard():
     if not check_password(st): st.stop()
+    from tgcf.backup_schedule import controls
+    controls(st, ROOT)
     st.title('Backup workers')
     st.button('Refresh status')
     try:
