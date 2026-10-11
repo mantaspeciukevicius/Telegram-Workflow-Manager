@@ -1,4 +1,5 @@
 from tgcf.accounts import account_ids, account_label
+from tgcf.web_ui.chat_browser import chat_browser
 import asyncio
 from pathlib import Path
 from tgcf.web_ui.telegram_tools import account_login, query, chat_usage
@@ -8,7 +9,7 @@ from tgcf.state_store import locked, read_json, atomic_json
 from tgcf.web_ui.password import check_password
 from tgcf.web_ui.utils import get_list, get_string
 
-st.set_page_config(page_title='Connections')
+st.set_page_config(page_title='Connections', layout='wide')
 if not check_password(st):
     st.stop()
 st.title('Connections')
@@ -18,29 +19,7 @@ try:
 except (ValueError, OSError):
     st.error('Cannot read configuration safely. Repair it before saving.')
     st.stop()
-with st.expander('Find Telegram chat / channel IDs', expanded=True):
-    with locked(ROOT):
-        browser_master = read_json(ROOT / 'tgcf.config.json')
-        browser_accounts = read_json(ROOT / 'tgcf.accounts.json')
-    account = st.selectbox('Telegram account', account_ids(browser_accounts),
-                           format_func=lambda key: account_label(browser_accounts, key), key='chat_browser_account')
-    cache_key = 'joined_channels_' + account
-    if st.button('Load joined chats / channels'):
-        try:
-            st.session_state[cache_key] = asyncio.run(query(account_login(browser_master, browser_accounts, account)))
-        except Exception:
-            st.session_state.pop(cache_key, None)
-            st.error('Could not load channels. Check this account’s saved session and connectivity.')
-    if cache_key in st.session_state:
-        rows = chat_usage(st.session_state[cache_key], browser_master.get('forwards', []))
-        search = st.text_input('Search channels by name, ID or username').strip().casefold()
-        filtered = [row for row in rows if not search or any(search in str(value).casefold() for value in row.values())]
-        st.caption('Showing ' + str(len(filtered)) + ' of ' + str(len(rows)) + ' groups/channels.')
-        if filtered:
-            st.dataframe(filtered, use_container_width=True)
-        else:
-            st.info('No matching groups or channels.')
-    st.caption('Copy an ID into a connection’s source or destinations. After adding a connection, assign its user on the Telegram accounts page.')
+chat_browser(ROOT)
 
 if st.button('Add connection'):
     config.forwards.append(Forward())

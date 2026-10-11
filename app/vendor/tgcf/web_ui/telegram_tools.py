@@ -1,4 +1,5 @@
 from tgcf.accounts import account_ids
+from tgcf.backup_routes import peer_key
 from telethon import TelegramClient, types, utils
 from telethon.sessions import StringSession
 
@@ -48,16 +49,7 @@ async def query(login, source=None):
         await client.disconnect()
 
 
-def peer_key(value):
-    value = str(value).strip().casefold()
-    for prefix in ('https://t.me/', 'http://t.me/', 't.me/'):
-        if value.startswith(prefix):
-            value = value[len(prefix):].rstrip('/')
-            break
-    return value.lstrip('@')
-
-
-def chat_usage(rows, forwards):
+def chat_usage(rows, forwards, accounts=None, **status):
     result = []
     for original in rows:
         row = dict(original)
@@ -74,4 +66,7 @@ def chat_usage(rows, forwards):
                 names.append((forward.get('con_name') or 'Connection ' + str(index + 1)) + ' [' + ', '.join(roles) + ']')
         row.update({'Used': 'Yes' if usage else 'No', 'Used as': ', '.join(dict.fromkeys(usage)), 'Connection(s)': '; '.join(names)})
         result.append(row)
+    if accounts is not None:
+        from tgcf.backup_routes import coverage
+        return coverage(result, {'forwards': forwards}, accounts, **status)
     return result

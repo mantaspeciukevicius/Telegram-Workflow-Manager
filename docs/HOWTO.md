@@ -8,6 +8,35 @@ Create Telegram API credentials at my.telegram.org and use the Telegram Login pa
 
 Open Connections, choose an account, select a source and add destinations. Use the chat browser to confirm IDs and distinguish migrated groups. Save, then run a one-time catch-up on a small, authorized test route before starting scheduled or LIVE operation.
 
+## See which chats are backed up
+
+Open **Connections → Chat & channel list**, choose a Telegram account, then click **Load joined chats / channels**. Search by name, ID, username or destination and use **Backup filter** to focus on unconfigured or problematic routes.
+
+| Status | Meaning |
+| --- | --- |
+| Not configured | No source connection; being a receiver alone does not count |
+| Backing up now / Live forwarding | Recent worker report lists this connection as active |
+| Scheduled | An enabled assigned route is waiting for its worker turn |
+| Account paused / Route paused / Disabled | Collection is intentionally stopped for that scope |
+| Unassigned account / No destination / Not logged in | Configuration or login needs attention |
+| Configured · worker unavailable / Worker error | Route exists, but worker activity is missing or failed |
+| History limit reached | The configured finite history boundary was reached |
+
+A configured or scheduled route is not proof that all its history has finished copying. Use Backup Control for offsets, activity, Telegram errors and logs. Joined-chat membership is refreshed only when you load it; route and worker status are read again on page interaction.
+
+## Configure a shared dump
+
+1. Load joined chats for the account that can read your sources and post to your archive.
+2. Open **Shared dump chat**. Pick a joined destination or enter a chat ID/public username. Save once; it is a shared default across accounts.
+3. In **Quick backup to dump**, select one or several source chats and click **Back up selected chats to dump**. No source ID copying or separate account-assignment step is needed.
+4. Check Backup Control. New sources get enabled routes starting at message zero; existing workers pick them up on their next cycle. A paused account stays paused until you resume it. LIVE mode handles new messages rather than historical catch-up.
+
+To also send an existing topic backup to the dump, enable **Also include my existing backups · keep their current destinations** and select the route. Only enabled routes assigned to the selected account are offered. Its existing destination, identity and offset remain intact; the dump receives messages processed from that saved offset on the next cycle. Existing history is not automatically replayed. For a deliberate history replay or destination replacement, use the existing connection/offset controls and consider duplicates.
+
+Changing or clearing the shared default affects future shortcut operations, not existing routes. Every assigned account needs permission to post to the destination. Invite/message links are not accepted as destination IDs; join the chat normally and use its ID or public username.
+
+The shared setting persists privately in `app/.tgcf_dump_chat.json`. Keep it with configuration, assignments and offsets in encrypted backups. It contains private chat metadata and is excluded from Git.
+
 ## Understand offsets
 
 A saved offset records history progress. Pending offset requests are applied by the worker. Restarting from zero can copy messages again. An interrupted API call can succeed remotely before the local offset is saved; this service cannot guarantee exactly-once Telegram delivery.

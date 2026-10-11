@@ -9,6 +9,8 @@ A Docker-deployed, multi-account Telegram forwarding and history-copying service
 - A dedicated Docker-owned scheduler for each account, plus a service for additional accounts.
 - Catch-up backups, one-time history copying and live forwarding controls.
 - Connection-to-account assignments, per-account pauses and per-connection controls.
+- A joined-chat list that distinguishes source backups from receivers, with destinations, account assignment and worker/paused status.
+- One shared dump destination for miscellaneous chats, with bulk setup and an option to add it to existing topic routes without resetting progress.
 - Saved offsets, progress reports, activity history and Telegram FloodWait visibility.
 - File locks, atomic JSON writes and merge-aware configuration updates to reduce concurrent-write conflicts.
 - A password-protected Streamlit interface with session expiry and session-local login throttling.
@@ -48,6 +50,18 @@ flowchart LR
 ```
 
 The UI queues work instead of launching forwarding processes. Workers retain progress and report status through files in the persistent `app` bind mount. Configuration and session files are deliberately excluded from this repository. Screenshots use synthetic accounts and connections with no Telegram session, and no forwarding worker is run for screenshots.
+
+## Chat coverage and shared dump
+
+In **Connections**, select an account and load its joined chats. The list shows whether a source backup route is configured, where messages go, and whether it is currently running, scheduled, paused, disabled or unavailable. Receiving copies is distinct from being backed up as a source.
+
+Set **Shared dump chat** once by picking a joined chat or entering its ID/username. Select miscellaneous source chats in **Quick backup to dump**, then submit the selection. New routes are enabled, assigned to that account and begin history at message zero. They enter the existing worker’s next cycle. Account/route pauses and current worker modes remain unchanged.
+
+Optionally include existing backups: the dump is added as another destination while the topic destination and saved offset are retained. Only messages handled after the next worker cycle go to the new destination; old history is not automatically copied there. Changing or clearing the default dump does not retarget or delete existing routes.
+
+![Chat backup coverage with synthetic data](docs/screenshots/chat-coverage.png)
+
+Duplicate submissions are idempotent, conflicting edits are rejected, and self/transitive forwarding loops are detected using known chat aliases. Each assigned account still needs access to the source and permission to post to the dump. See [setup and troubleshooting](docs/HOWTO.md) for the full workflow.
 
 More interface views: [screenshot gallery](docs/SCREENSHOTS.md).
 
