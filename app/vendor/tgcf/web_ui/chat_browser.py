@@ -3,7 +3,7 @@ import asyncio
 from pathlib import Path
 import streamlit as st
 from tgcf.accounts import account_ids, account_label
-from tgcf.backup_routes import read_dump, save_dump, clear_dump, assign_to_dump, peer_key, alias_map, canonical, source_connections
+from tgcf.backup_routes import read_dump, save_dump, clear_dump, assign_to_dump, peer_key, alias_map, canonical, source_connections, used_chat_keys
 from tgcf.state_store import locked, read_json
 from tgcf.web_ui.telegram_tools import account_login, query, chat_usage
 
@@ -84,14 +84,19 @@ def chat_browser(root):
                 st.dataframe(display, use_container_width=True)
             else: st.info('No chats match this filter.')
             st.subheader('Quick backup to dump')
+            hide_used = st.checkbox('Hide chats used as sources or destinations', value=True)
             include_existing = st.checkbox('Also include my existing backups · keep their current destinations')
+            if include_existing and hide_used:
+                st.caption('Uncheck the filter above to select existing backups.')
             if include_existing:
                 st.caption('For existing routes, the dump receives messages from the saved offset on the next worker cycle. Earlier messages stay in their existing topic chats; offsets are not reset.')
             aliases = alias_map(joined)
             dump_key = canonical(dump.get('peer', ''), aliases)
+            used_keys = used_chat_keys(master.get('forwards', []), joined)
             candidates = {}
             for row in filtered:
                 if canonical(row['ID'], aliases) == dump_key: continue
+                if hide_used and canonical(row['ID'], aliases) in used_keys: continue
                 existing = source_connections(row, master.get('forwards', []))
                 eligible = not existing
                 if include_existing and len(existing) == 1:
@@ -101,7 +106,7 @@ def chat_browser(root):
                                 and dump_key not in [canonical(d, aliases) for d in forward.get('dest', [])])
                 if eligible: candidates[row['ID']] = row
             if not dump: st.info('Set your shared dump chat above first.')
-            elif not candidates: st.info('No unconfigured chats in this view. Existing source routes remain available in the connection editor below.')
+            elif not candidates: st.info('No eligible chats match these filters. Uncheck the used-chat filter to include destinations, or edit existing routes below.')
             else:
                 with st.form('quick_dump_assignments'):
                     sources = st.multiselect('Chats / channels to back up', list(candidates),

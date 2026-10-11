@@ -52,3 +52,5 @@ FloodWait is a Telegram-imposed delay: wait for the displayed cooldown. Invalid 
 ## Persistence
 
 Keep the entire private runtime configuration, accounts, offsets and sessions under `app` in an encrypted backup. The Docker image alone does not contain this state. Restore with workers stopped and start only after verifying destination assignments. Never run the original and restored forwarding stack simultaneously against the same routes.
+
+Quick backup to dump now defaults to **Hide chats used as sources or destinations**. This excludes chats referenced anywhere in configured routes, including disabled routes and routes assigned to other accounts. Uncheck it to show available destinations; also enable the existing-backups option when adding the dump to an existing source route. Existing destinations and offsets are preserved.

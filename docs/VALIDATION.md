@@ -6,7 +6,7 @@ No end-to-end Telegram forwarding test is performed for this public release: it 
 
 ## Chat coverage and shared-dump update
 
-25 offline automated tests cover source/receiver distinctions, pauses, worker freshness/errors, history boundaries, username/ID aliases, bulk route creation, account assignment, preserving existing topic destinations and offsets, idempotent retries, conflict handling, loop detection, private settings and actual worker route selection. They use temporary directories and synthetic sessions with network disabled.
+29 offline automated tests cover source/receiver distinctions, pauses, worker freshness/errors, history boundaries, username/ID aliases, bulk route creation, account assignment, preserving existing topic destinations and offsets, idempotent retries, conflict handling, loop detection, private settings and actual worker route selection. They use temporary directories and synthetic sessions with network disabled.
 
 A real Chromium/Streamlit test exercises the full Connections page: selecting a joined dump chat, adding a new source and also adding the dump to an existing topic route, retaining the original destination/offset, and rendering on desktop/mobile. Public screenshots come only from this isolated demo; Telegram queries are replaced with offline fixtures. Production verification checks the authenticated page, unchanged route/account/pause state and continued worker containers. It does not send messages or claim an end-to-end Telegram delivery test.
 
@@ -21,3 +21,7 @@ docker run --rm --network none --read-only --tmpfs /tmp:size=64m \
   -v "$PWD/tests:/tests:ro" -w /tmp "$TGCF_TEST_IMAGE" \
   python -m unittest discover -s /tests -v
 ```
+
+The unused-chat filter has offline checks for source and destination coverage, username/URL aliases, disabled routes, all destinations, and preservation of input data.
+
+The actual Streamlit picker was verified with synthetic chats: the checked filter hides both sources and destinations; clearing it makes destination chats selectable again. No Telegram messages were sent.

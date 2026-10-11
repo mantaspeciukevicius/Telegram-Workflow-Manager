@@ -54,6 +54,14 @@ def canonical(value, aliases):
     return aliases.get(key, key)
 
 
+def used_chat_keys(forwards, rows):
+    """Chats reserved by any configured route, including disabled routes."""
+    aliases = alias_map(rows)
+    return {canonical(peer, aliases) for route in forwards
+            for peer in [route.get('source', ''), *route.get('dest', [])]
+            if peer_key(peer)}
+
+
 def source_connections(row, forwards):
     keys = {peer_key(row.get('ID', '')), peer_key(row.get('Username', ''))} - {''}
     return [forward for forward in forwards if peer_key(forward.get('source', '')) in keys]

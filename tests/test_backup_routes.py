@@ -28,6 +28,28 @@ def fixture():
     return master, accounts
 
 
+class UsedChatFilterTests(unittest.TestCase):
+    def test_sources_and_destinations_are_reserved(self):
+        master, _ = fixture()
+        self.assertEqual(routes.used_chat_keys(master['forwards'], ROWS), {'-1001', '-1009'})
+        self.assertNotIn('-1002', routes.used_chat_keys(master['forwards'], ROWS))
+
+    def test_username_and_url_aliases_resolve_to_ids(self):
+        forwards = [{'source': 'https://t.me/TOPIC_SOURCE', 'dest': ['@ARCHIVE_DUMP']}]
+        self.assertEqual(routes.used_chat_keys(forwards, ROWS), {'-1001', '-1009'})
+
+    def test_disabled_routes_still_reserve_chats(self):
+        master, _ = fixture()
+        master['forwards'][0]['use_this'] = False
+        self.assertEqual(routes.used_chat_keys(master['forwards'], ROWS), {'-1001', '-1009'})
+
+    def test_all_routes_and_destinations_without_mutation(self):
+        forwards = [{'source': -1001, 'dest': [-1009, -1002]}, {'source': '@elsewhere', 'dest': []}]
+        before = copy.deepcopy(forwards)
+        self.assertEqual(routes.used_chat_keys(forwards, ROWS), {'-1001', '-1009', '-1002', 'elsewhere'})
+        self.assertEqual(forwards, before)
+
+
 class CoverageTests(unittest.TestCase):
     def setUp(self):
         self.master, self.accounts = fixture()
