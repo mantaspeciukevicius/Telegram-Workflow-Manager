@@ -1,17 +1,22 @@
-# Message Workflow Manager
+# Telegram Forward / Backup Tool
 
-A Docker-deployed, multi-account Telegram forwarding and history-copying service with a Streamlit control panel. This project extends [aahnik/tgcf](https://github.com/aahnik/tgcf); upstream authorship and the MIT license are preserved in [NOTICE](NOTICE.md) and [LICENSE](LICENSE).
+A self-hosted Telegram forwarding and history-backup tool with Docker workers and a Streamlit control panel.
+
+**Based on [TGCF by Aahnik Daw and its contributors](https://github.com/aahnik/tgcf), with substantial modifications for multi-account operation, backup scheduling, progress recovery, and day-to-day administration.** TGCF provides the original forwarding engine, live/history modes, web interface, and plugin system. This project builds on that work; upstream attribution and the MIT license are retained in [NOTICE](NOTICE.md) and [LICENSE](LICENSE).
 
 ![Backup worker dashboard using synthetic accounts](docs/screenshots/dashboard.png)
 
-## Local extensions
+## Added features and major modifications
 
 - A dedicated Docker-owned scheduler for each account, plus a service for additional accounts.
 - Catch-up backups, one-time history copying and live forwarding controls.
 - Connection-to-account assignments, per-account pauses and per-connection controls.
 - A joined-chat list that distinguishes source backups from receivers, with destinations, account assignment and worker/paused status.
 - One shared dump destination for miscellaneous chats, with bulk setup and an option to add it to existing topic routes without resetting progress.
-- Saved offsets, progress reports, activity history and Telegram FloodWait visibility.
+- Weighted normal/dump queues with configurable time shares and session limits, persistent rotation, and cooldown handling that keeps later routes reachable.
+- Saved offsets, progress reports, activity history and Telegram FloodWait visibility, with retries of the same message after rate limits.
+- Recovery from oversized media captions: preserve the file and send the complete caption in text replies.
+- Native invoice forwarding and automatic progress past empty history entries, so these message types do not block a backup.
 - File locks, atomic JSON writes and merge-aware configuration updates to reduce concurrent-write conflicts.
 - A password-protected Streamlit interface with session expiry and session-local login throttling.
 
@@ -86,3 +91,11 @@ Backup Control → **History backup priorities · normal / dump** configures the
 Each account schedules its own two queues. Actual elapsed time determines fairness, independently of route counts. Within each queue, routes take turns. While both queues have runnable history work, the long-run share follows the configured percentage; individual turns can temporarily differ. Spare capacity is available to the other queue when a queue is empty or finished. Completed routes have a five-minute cooldown; timed-out routes resume from their saved offsets. Paused, disabled and reassigned routes are filtered before each turn. Run-once visits every selected route once; live forwarding is unchanged.
 
 Queue usage, interrupted-turn checkpoints and cursors persist in private sidecars. No offset resets or Telegram rate-limit bypasses are introduced.
+
+### History forwarding recovery
+
+History queue rotation retains its position when completed routes temporarily leave the eligible queue. Later backups therefore still receive their turns.
+
+If Telegram rejects a media caption as too long, the file is copied with an empty caption and the full caption text is sent as plain-text replies, split at Telegram's text limit. Already accepted file and text sends are retained during FloodWait retries. Invoice messages use native forwarding because Telegram invoices cannot be uploaded as files; this does not make or authorize a payment. Empty history entries with no text or media advance the saved offset without sending an empty message.
+
+These fixes were verified against running backup routes, including successful transfers after an oversized caption, an invoice, and an empty history entry. Destination IDs, credentials, route assignments, and progress remain private deployment state and are not included in this repository.

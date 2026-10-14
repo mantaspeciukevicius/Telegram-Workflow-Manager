@@ -249,7 +249,7 @@ class RoutingTests(unittest.TestCase):
 
     def test_worker_selects_new_route_for_correct_account(self):
         import importlib.util
-        spec = importlib.util.spec_from_file_location('worker_service_under_test', '/runner/worker_service.py')
+        spec = importlib.util.spec_from_file_location('worker_service_under_test', str(Path(__file__).resolve().parents[1] / 'app' / 'worker_service.py'))
         worker = importlib.util.module_from_spec(spec); spec.loader.exec_module(worker)
         created = self.assign(account='user2')
         master = read_json(self.root / 'tgcf.config.json'); accounts = read_json(self.root / 'tgcf.accounts.json')

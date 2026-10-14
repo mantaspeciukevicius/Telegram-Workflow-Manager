@@ -96,3 +96,18 @@ class ScheduleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             iterator=scheduled_names(root,'user1',lambda:routes(1,0));next(iterator)
             with self.assertRaises(StopIteration):iterator.send((1,False))
+
+    def test_cooldown_does_not_reset_queue_cursor(self):
+        all_routes = routes(5, 0)
+        scheduler = FairScheduler({'last': {'normal': 'normal-1'}})
+        eligible = [all_routes[0], *all_routes[2:]]
+        self.assertEqual(scheduler.choose(eligible, DEFAULTS, all_routes)[0]['connection_id'], 'normal-2')
+
+    def test_fast_completions_visit_later_routes(self):
+        with tempfile.TemporaryDirectory() as root:
+            iterator = scheduled_names(root, 'user1', lambda: routes(5, 0))
+            seen = [next(iterator)[0]]
+            for _ in range(4):
+                seen.append(iterator.send((1, False))[0])
+            self.assertEqual(seen, ['normal-' + str(i) for i in range(5)])
+            iterator.close()

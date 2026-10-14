@@ -33,7 +33,7 @@ class FairScheduler:
         if pending:
             self.record(pending['key'], pending['kind'], pending.get('elapsed', 0), pending['competing'])
 
-    def choose(self, routes, options):
+    def choose(self, routes, options, all_routes=None):
         queues = {kind: [r for r in routes if category(r, options) == kind] for kind in ('normal', 'dump')}
         available = [kind for kind in queues if queues[kind]]
         if not available: return None
@@ -46,9 +46,14 @@ class FairScheduler:
             kind = min(available, key=lambda k: self.state['used'][k] / (share if k == 'normal' else 1 - share))
         queue = queues[kind]
         previous = self.state['last'].get(kind)
-        ids = [r['connection_id'] for r in queue]
-        index = (ids.index(previous) + 1) % len(queue) if previous in ids else 0
-        return queue[index], kind, options[kind + '_minutes'] * 60, len(available) == 2
+        # Rotate in the full route order, even when the previous route is
+        # temporarily excluded by the five-minute completion cooldown.
+        order = [r['connection_id'] for r in (all_routes if all_routes is not None else routes)
+                 if category(r, options) == kind]
+        start = (order.index(previous) + 1) % len(order) if previous in order else 0
+        eligible = {r['connection_id']: r for r in queue}
+        key = next(key for key in order[start:] + order[:start] if key in eligible)
+        return eligible[key], kind, options[kind + '_minutes'] * 60, len(available) == 2
 
     def record(self, key, kind, elapsed, competing):
         self.state['last'][kind] = key
@@ -71,8 +76,9 @@ def scheduled_names(root, account, available, scope='enabled', once=False):
         with locked(root):
             options = settings(root)
             routes = available()
+        all_routes = routes
         routes = [r for r in routes if r['connection_id'] not in finished or (not once and time.monotonic() - finished[r['connection_id']] >= 300)]
-        choice = scheduler.choose(routes, options)
+        choice = scheduler.choose(routes, options, all_routes)
         if choice is None: return
         route, kind, limit, competing = choice
         scheduler.state['pending'] = {'key': route['connection_id'], 'kind': kind, 'competing': competing, 'elapsed': 0}

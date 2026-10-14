@@ -80,6 +80,17 @@ async def forward_job() -> None:
                     break
                 if isinstance(message, MessageService):
                     continue
+                if not message.message and message.media is None:
+                    # Telegram may expose an empty history entry. There is no
+                    # content to copy, but its ID must not block later messages.
+                    forward.offset = message.id
+                    for current in CONFIG.forwards:
+                        if current.connection_id == forward.connection_id:
+                            current.offset = message.id
+                            break
+                    write_config(CONFIG, persist=False)
+                    logging.info('Skipped empty source message with id = %s', message.id)
+                    continue
                 try:
                     tm = await apply_plugins(message)
                     if not tm:

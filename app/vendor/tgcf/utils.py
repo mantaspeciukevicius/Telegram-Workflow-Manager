@@ -8,9 +8,11 @@ import sys
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from telethon.errors import MediaCaptionTooLongError
 from telethon.client import TelegramClient
 from telethon.hints import EntityLike
 from telethon.tl.custom.message import Message
+from telethon.tl.types import MessageMediaInvoice
 
 from tgcf import __version__
 from tgcf.config import CONFIG
@@ -32,15 +34,51 @@ def platform_info():
 async def send_message(recipient: EntityLike, tm: "TgcfMessage") -> Message:
     """Forward or send a copy, depending on config."""
     client: TelegramClient = tm.message.client
-    if CONFIG.show_forwarded_from:
+    if CONFIG.show_forwarded_from or isinstance(tm.message.media, MessageMediaInvoice):
+        # Invoices cannot be uploaded as files. Native forwarding preserves
+        # their payment details and Telegram's original invoice behavior.
         return await client.forward_messages(recipient, tm.message)
-    if tm.new_file:
-        message = await client.send_file(
-            recipient, tm.new_file, caption=tm.text, reply_to=tm.reply_to
+    # Remember partial fallback sends so FloodWait retries do not resend media
+    # or caption chunks already accepted by Telegram.
+    copies = getattr(tm, '_caption_copies', {})
+    tm._caption_copies = copies
+    key = str(recipient)
+    if key not in copies:
+        try:
+            if tm.new_file:
+                return await client.send_file(
+                    recipient, tm.new_file, caption=tm.text, reply_to=tm.reply_to
+                )
+            tm.message.text = tm.text
+            return await client.send_message(recipient, tm.message, reply_to=tm.reply_to)
+        except MediaCaptionTooLongError:
+            logging.warning('Oversized media caption: preserving full text in replies to the copied file')
+            text, _ = await client._parse_message_text(tm.text, ())
+            chunks = []
+            chunk, units = '', 0
+            for char in text:
+                size = len(char.encode('utf-16-le')) // 2
+                if units + size > 4096:
+                    chunks.append(chunk)
+                    chunk, units = '', 0
+                chunk += char
+                units += size
+            if chunk:
+                chunks.append(chunk)
+            copies[key] = {'chunks': chunks, 'sent': 0, 'media': None}
+    state = copies[key]
+    if state['media'] is None:
+        state['media'] = await client.send_file(
+            recipient, tm.new_file or tm.message.media,
+            caption='', parse_mode=None, reply_to=tm.reply_to
         )
-        return message
-    tm.message.text = tm.text
-    return await client.send_message(recipient, tm.message, reply_to=tm.reply_to)
+    while state['sent'] < len(state['chunks']):
+        await client.send_message(
+            recipient, state['chunks'][state['sent']],
+            parse_mode=None, link_preview=False, reply_to=state['media'].id
+        )
+        state['sent'] += 1
+    return state['media']
 
 
 def cleanup(*files: str) -> None:
