@@ -1,4 +1,4 @@
-# Telegram Forward / Backup Tool
+# Telegram Workflow Manager
 
 A self-hosted Telegram forwarding and history-backup tool with Docker workers and a Streamlit control panel.
 
@@ -25,8 +25,8 @@ This is a forwarding service, not a chatbot. It depends on authorized Telegram a
 ## Quick start
 
 ```sh
-git clone https://github.com/mantaspeciukevicius/message-workflow-manager.git
-cd message-workflow-manager
+git clone https://github.com/mantaspeciukevicius/Telegram-Workflow-Manager.git
+cd Telegram-Workflow-Manager
 python3 scripts/configure.py
 # Optional: set LAN_IP in a root .env to expose the UI on your trusted LAN.
 docker compose up -d --build
@@ -99,3 +99,11 @@ History queue rotation retains its position when completed routes temporarily le
 If Telegram rejects a media caption as too long, the file is copied with an empty caption and the full caption text is sent as plain-text replies, split at Telegram's text limit. Already accepted file and text sends are retained during FloodWait retries. Invoice messages use native forwarding because Telegram invoices cannot be uploaded as files; this does not make or authorize a payment. Empty history entries with no text or media advance the saved offset without sending an empty message.
 
 These fixes were verified against running backup routes, including successful transfers after an oversized caption, an invoice, and an empty history entry. Destination IDs, credentials, route assignments, and progress remain private deployment state and are not included in this repository.
+
+## Object-oriented structure
+
+The application combines classes for stateful behavior with functions for small operations. TGCF already supplies configuration models (`Config`, `Forward`), the `TgcfMessage` message wrapper, and the `TgcfPlugin` base class used by its plugins. The local `FairScheduler` class owns history queue rotation and time-share accounting.
+
+`MessageCopier` encapsulates copying one source message, with its Telegram client supplied explicitly. Its `CaptionDelivery` data objects track each destination's copied media and accepted caption chunks, allowing an in-process FloodWait retry to continue without repeating those accepted sends. The existing `send_message` entry point retains one copier per source-message wrapper, so history and live callers keep their existing interface. This retry state is in memory; it does not guarantee exactly-once delivery across worker restarts.
+
+Offline tests cover normal copies, modified files, native forwarding, invoice handling, Unicode caption splitting, multiple destinations, and resuming partial sends after FloodWait. The refactor does not change route configuration, saved offsets, or scheduling policy.
