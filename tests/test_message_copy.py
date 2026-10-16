@@ -91,3 +91,11 @@ class MessageCopyTests(unittest.IsolatedAsyncioTestCase):
             await send_message(-1, tm)
         self.assertIs(tm._message_copier, copier)
         client.send_file.assert_awaited_once()
+
+    async def test_shared_story_uses_native_forward(self):
+        from telethon.tl.types import MessageMediaStory
+        story = MessageMediaStory.__new__(MessageMediaStory)
+        copier, client, tm = self.make_copier(media=story)
+        await copier.send(-1, show_forwarded_from=False)
+        client.forward_messages.assert_awaited_once_with(-1, tm.message)
+        client.send_file.assert_not_awaited()

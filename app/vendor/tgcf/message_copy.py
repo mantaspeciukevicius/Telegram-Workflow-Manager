@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Optional
 from telethon.client import TelegramClient
 from telethon.hints import EntityLike
 from telethon.tl.custom.message import Message
-from telethon.tl.types import MessageMediaInvoice
+from telethon.tl.types import MessageMediaInvoice, MessageMediaStory
 from telethon.errors import MediaCaptionTooLongError
 
 if TYPE_CHECKING:
@@ -53,7 +53,7 @@ class MessageCopier:
 
     async def send(self, recipient: EntityLike, *, show_forwarded_from: bool) -> Message:
         tm = self.message
-        if show_forwarded_from or isinstance(tm.message.media, MessageMediaInvoice):
+        if show_forwarded_from or isinstance(tm.message.media, (MessageMediaInvoice, MessageMediaStory)):
             # Telegram invoices cannot be uploaded as ordinary files.
             return await self.client.forward_messages(recipient, tm.message)
         key = str(recipient)
