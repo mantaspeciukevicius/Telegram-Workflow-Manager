@@ -99,3 +99,26 @@ class MessageCopyTests(unittest.IsolatedAsyncioTestCase):
         await copier.send(-1, show_forwarded_from=False)
         client.forward_messages.assert_awaited_once_with(-1, tm.message)
         client.send_file.assert_not_awaited()
+
+    async def test_unavailable_story_preserves_link_and_continues(self):
+        from telethon.errors import MediaEmptyError
+        from telethon.tl.types import MessageMediaStory
+        copier, client, tm = self.make_copier(media=MessageMediaStory.__new__(MessageMediaStory))
+        tm.message.chat_id = -1001234567890
+        tm.message.id = 42
+        tm.message.raw_text = 'Original caption'
+        client.forward_messages.side_effect = MediaEmptyError(None)
+        result = await copier.send(-1, show_forwarded_from=False)
+        self.assertEqual(result.id, 20)
+        text = client.send_message.await_args.args[1]
+        self.assertIn('Original caption', text)
+        self.assertIn('https://t.me/c/1234567890/42', text)
+        self.assertIn('unavailable', text)
+
+    async def test_non_story_media_error_is_not_hidden(self):
+        from telethon.errors import MediaEmptyError
+        copier, client, tm = self.make_copier()
+        client.forward_messages.side_effect = MediaEmptyError(None)
+        with self.assertRaises(MediaEmptyError):
+            await copier.send(-1, show_forwarded_from=True)
+        client.send_message.assert_not_awaited()

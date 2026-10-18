@@ -8,7 +8,8 @@ from telethon.client import TelegramClient
 from telethon.hints import EntityLike
 from telethon.tl.custom.message import Message
 from telethon.tl.types import MessageMediaInvoice, MessageMediaStory
-from telethon.errors import MediaCaptionTooLongError
+from telethon.utils import resolve_id
+from telethon.errors import MediaCaptionTooLongError, MediaEmptyError
 
 if TYPE_CHECKING:
     from tgcf.plugins import TgcfMessage
@@ -55,7 +56,18 @@ class MessageCopier:
         tm = self.message
         if show_forwarded_from or isinstance(tm.message.media, (MessageMediaInvoice, MessageMediaStory)):
             # Telegram invoices cannot be uploaded as ordinary files.
-            return await self.client.forward_messages(recipient, tm.message)
+            try:
+                return await self.client.forward_messages(recipient, tm.message)
+            except MediaEmptyError:
+                if not isinstance(tm.message.media, MessageMediaStory):
+                    raise
+                channel_id, _ = resolve_id(tm.message.chat_id)
+                source = f'https://t.me/c/{channel_id}/{tm.message.id}'
+                text = (tm.message.raw_text or '') + '\n[Shared story unavailable for forwarding]\n' + source
+                logging.warning('Story unavailable; preserving source link for message %s', tm.message.id)
+                return await self.client.send_message(
+                    recipient, text.strip(), parse_mode=None, link_preview=False, reply_to=tm.reply_to
+                )
         key = str(recipient)
         if key not in self._captions:
             try:
