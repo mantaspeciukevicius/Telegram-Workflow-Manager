@@ -4,6 +4,10 @@ services:
     build: .
     container_name: tgcf-web
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - NET_RAW
     stop_grace_period: 60s
 
     working_dir: /opt/my-tgcf
@@ -27,6 +31,10 @@ services:
     build: .
     container_name: tgcf-user1
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - NET_RAW
     stop_grace_period: 60s
 
     working_dir: /opt/my-tgcf
@@ -46,6 +54,10 @@ services:
     build: .
     container_name: tgcf-user2
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - NET_RAW
     stop_grace_period: 60s
 
     working_dir: /opt/my-tgcf
@@ -64,6 +76,10 @@ services:
     build: .
     container_name: tgcf-user3
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - NET_RAW
     stop_grace_period: 60s
 
     working_dir: /opt/my-tgcf
@@ -82,6 +98,10 @@ services:
     image: tgcf-tgcf-user1:latest
     container_name: tgcf-extra-users
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - NET_RAW
     stop_grace_period: 60s
     working_dir: /opt/my-tgcf
     environment:

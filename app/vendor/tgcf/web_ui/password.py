@@ -1,5 +1,23 @@
 import hmac
 import time
+import threading
+from collections import deque
+
+# Shared by all browser sessions in this web-server process.
+_attempts = deque()
+_attempt_lock = threading.Lock()
+
+def _limited(record=False):
+    with _attempt_lock:
+        now = time.monotonic()
+        while _attempts and now - _attempts[0] >= 60:
+            _attempts.popleft()
+        if len(_attempts) >= 5:
+            return True
+        if record:
+            _attempts.append(now)
+        return False
+
 from tgcf.config import PASSWORD
 
 def check_password(st):
@@ -12,18 +30,17 @@ def check_password(st):
         state['auth_activity'] = now
         return True
     state['password_correct'] = False
-    attempts = [t for t in state.get('auth_attempts', []) if now - t < 60]
-    state['auth_attempts'] = attempts
-    if len(attempts) >= 5:
+    if _limited():
         st.warning('Too many attempts. Wait one minute and reload.')
         return False
     def entered():
         value = state.pop('password', '')
-        state['auth_attempts'].append(time.time())
+        if _limited(record=True):
+            state['auth_error'] = True
+            return
         if PASSWORD != 'tgcf' and hmac.compare_digest(value.encode(), PASSWORD.encode()):
             state['password_correct'] = True
             state['auth_activity'] = time.time()
-            state['auth_attempts'] = []
         else:
             state['auth_error'] = True
     st.text_input('Password', type='password', on_change=entered, key='password')

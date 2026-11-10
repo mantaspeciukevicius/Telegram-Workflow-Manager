@@ -18,7 +18,7 @@ A self-hosted Telegram forwarding and history-backup tool with Docker workers an
 - Recovery from oversized media captions: preserve the file and send the complete caption in text replies.
 - Native invoice forwarding and automatic progress past empty history entries, so these message types do not block a backup.
 - File locks, atomic JSON writes and merge-aware configuration updates to reduce concurrent-write conflicts.
-- A password-protected Streamlit interface with session expiry and session-local login throttling.
+- A password-protected Streamlit interface with session expiry and login throttling shared across browser sessions in each web-server process.
 
 This is a forwarding service, not a chatbot. It depends on authorized Telegram accounts and on access to each source and destination. Telegram permissions, protected content and rate limits still apply. Copy only material you have permission to copy.
 
@@ -113,3 +113,11 @@ Offline tests cover normal copies, modified files, native forwarding, invoice ha
 Account pages distinguish a saved session from a session recently verified with Telegram. Use **Verify saved session** on Telegram Login or Multi User to run a read-only authorization check. Successful verification is shown for five minutes and is invalidated when credentials change.
 
 Before starting a history or live job, workers verify saved user sessions without prompting for phone numbers or login codes. Revoked sessions show **Login required** in Backup Control and do not launch forwarding jobs. Connection failures show a separate verification error. Checks retry after five minutes; replacing saved credentials allows an immediate retry. These checks do not reset offsets or remove sessions, and a successful check is not a security audit of the account.
+
+### Container and login security
+
+The web UI allows five login attempts per minute across browser sessions in a single web-server process. Reconnecting does not reset the limit; a process restart does. The shared limit can temporarily delay legitimate logins during an attack. Existing authenticated sessions retain access.
+
+All five Compose services block privilege escalation with `no-new-privileges` and drop the `NET_RAW` capability. Apply these settings to existing containers by recreating them with `docker compose up -d --no-build --force-recreate`. Restrict access to the application directory and protect configuration backups: Telegram session strings grant account access. These controls do not revoke previously stolen sessions; review active devices in Telegram separately.
+
+Run the offline login regression tests with `python3 -m unittest discover -s tests -p test_login_throttle.py`.
