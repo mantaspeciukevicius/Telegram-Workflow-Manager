@@ -107,3 +107,9 @@ The application combines classes for stateful behavior with functions for small 
 `MessageCopier` encapsulates copying one source message, with its Telegram client supplied explicitly. Its `CaptionDelivery` data objects track each destination's copied media and accepted caption chunks, allowing an in-process FloodWait retry to continue without repeating those accepted sends. The existing `send_message` entry point retains one copier per source-message wrapper, so history and live callers keep their existing interface. This retry state is in memory; it does not guarantee exactly-once delivery across worker restarts.
 
 Offline tests cover normal copies, modified files, native forwarding, invoice handling, Unicode caption splitting, multiple destinations, and resuming partial sends after FloodWait. The refactor does not change route configuration, saved offsets, or scheduling policy.
+
+### Session authorization status
+
+Account pages distinguish a saved session from a session recently verified with Telegram. Use **Verify saved session** on Telegram Login or Multi User to run a read-only authorization check. Successful verification is shown for five minutes and is invalidated when credentials change.
+
+Before starting a history or live job, workers verify saved user sessions without prompting for phone numbers or login codes. Revoked sessions show **Login required** in Backup Control and do not launch forwarding jobs. Connection failures show a separate verification error. Checks retry after five minutes; replacing saved credentials allows an immediate retry. These checks do not reset offsets or remove sessions, and a successful check is not a security audit of the account.

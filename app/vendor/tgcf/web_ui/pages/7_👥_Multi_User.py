@@ -5,6 +5,7 @@ import streamlit as st
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 from telethon.errors import SessionPasswordNeededError
+from tgcf.web_ui.telegram_tools import account_login, session_status
 from tgcf.accounts import account_ids, account_label
 from tgcf.state_store import locked, read_json, atomic_json, merge_changes
 from tgcf.web_ui.password import check_password
@@ -196,7 +197,7 @@ def save_account(account, before, draft):
         atomic_json(ACCOUNTS, latest)
 
 st.subheader(account_label(accounts, 'user1') + ' · User 1 (primary)')
-st.caption('Logged in' if master['login'].get('SESSION_STRING') else 'No saved user session')
+session_status(ROOT, 'user1', master['login'])
 with st.form('primary_account_label'):
     primary_label = st.text_input('User 1 display name', value=account_label(accounts, 'user1'))
     save_primary_label = st.form_submit_button('Save User 1 name')
@@ -226,7 +227,7 @@ for account in account_ids(accounts):
     before = copy.deepcopy(accounts.get(account, {}))
     draft = copy.deepcopy(before)
     st.subheader(before.get('label', account))
-    st.caption('Logged in' if before.get('session_string') else 'Not logged in')
+    session_status(ROOT, account, account_login(master, accounts, account))
     with st.form('account_' + account):
         draft['label'] = st.text_input('Label', value=before.get('label', account))
         draft['reuse_user1_api'] = st.checkbox('Reuse primary API credentials', value=before.get('reuse_user1_api', True))

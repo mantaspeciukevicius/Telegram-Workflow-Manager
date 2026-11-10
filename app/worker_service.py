@@ -1,4 +1,5 @@
 """Docker-owned account scheduler; UI submits jobs, never spawns forwarding processes."""
+import asyncio
 import json
 import os
 import re
@@ -10,6 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / 'vendor'))
+from tgcf.session_health import check_session, record_check, fingerprint
 from tgcf.accounts import account_ids
 from tgcf.state_store import locked, read_json, atomic_json, update_json
 from tgcf.web_ui.telegram_tools import account_login
@@ -92,6 +94,7 @@ def account_service(account):
     last_request = None
     next_run = 0
     live_signature = None
+    checked_credentials = None
     try:
         while not STOP:
             with locked(ROOT):
@@ -146,8 +149,19 @@ def account_service(account):
                     update_json(ROOT / '.tgcf_worker_modes.json', lambda data: data.update({account: {'mode': 'auto', 'scope': 'enabled'}}), {})
                     spec = {'mode': 'auto', 'scope': 'enabled'}
                 publish(account, state='error' if rc else 'round_complete', message=f'Last run exit code {rc}; next cycle in five minutes', connection_ids=[])
+            login = account_login(master, accounts, account)
+            if process is None and fingerprint(login) != checked_credentials:
+                next_run = 0
             if process is None and time.monotonic() >= next_run:
-                login = account_login(master, accounts, account)
+                checked_credentials = fingerprint(login)
+                status = asyncio.run(check_session(login))
+                record_check(ROOT, account, login, status)
+                if status in ('not_logged_in', 'verification_error'):
+                    message = 'Login required: reconnect on Telegram accounts' if status == 'not_logged_in' else 'Session check failed; retrying in five minutes'
+                    publish(account, state=status, message=message, connection=None, connection_id=None, connection_ids=[])
+                    next_run = time.monotonic() + 300
+                    time.sleep(2)
+                    continue
                 if not login.get('SESSION_STRING') and not login.get('BOT_TOKEN'):
                     publish(account, state='not_logged_in', message='Log in on Telegram accounts', connection_ids=[])
                     time.sleep(2); continue

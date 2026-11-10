@@ -57,6 +57,8 @@ def connection_rows(master, accounts, runtime, history, activity, users, paused,
         elif owner == 'unassigned': state = 'Unassigned'
         elif users.get(owner): state = 'User paused'
         elif paused.get(key): state = 'Paused'
+        elif worker.get('state') == 'not_logged_in': state = 'Login required'
+        elif worker.get('state') == 'verification_error': state = 'Session verification unavailable'
         elif current and time.time() - worker.get('updated_at', 0) < 30:
             state = worker.get('state', 'running')
             if event.get('flood_until', 0) > time.time():

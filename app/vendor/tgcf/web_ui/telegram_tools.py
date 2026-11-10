@@ -70,3 +70,15 @@ def chat_usage(rows, forwards, accounts=None, **status):
         from tgcf.backup_routes import coverage
         return coverage(result, {'forwards': forwards}, accounts, **status)
     return result
+
+
+def session_status(root, account, login):
+    """Render honest cached health plus an explicit read-only Telegram check."""
+    import asyncio
+    import streamlit as st
+    from tgcf.session_health import check_session, record_check, session_label
+    if st.button('Verify saved session', key='verify_session_' + account):
+        with st.spinner('Checking Telegram session…'):
+            status = asyncio.run(check_session(login))
+            record_check(root, account, login, status)
+    st.caption(session_label(root, account, login))

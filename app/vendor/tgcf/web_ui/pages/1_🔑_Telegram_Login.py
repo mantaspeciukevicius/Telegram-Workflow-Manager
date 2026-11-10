@@ -1,4 +1,6 @@
 import streamlit as st
+from pathlib import Path
+from tgcf.web_ui.telegram_tools import session_status
 from tgcf.config import read_config, write_config
 from tgcf.web_ui.password import check_password
 st.set_page_config(page_title='Telegram Login')
@@ -6,6 +8,7 @@ if not check_password(st):
     st.stop()
 config = read_config()
 st.title('Primary Telegram account')
+session_status(Path.cwd(), 'user1', config.login.dict())
 with st.form('primary_login'):
     config.login.API_ID = int(st.number_input('API ID', min_value=0, value=config.login.API_ID))
     config.login.API_HASH = st.text_input('API hash', value=config.login.API_HASH, type='password')
