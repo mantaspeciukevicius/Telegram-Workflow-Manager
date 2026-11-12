@@ -82,3 +82,5 @@ def session_status(root, account, login):
             status = asyncio.run(check_session(login))
             record_check(root, account, login, status)
     st.caption(session_label(root, account, login))
+    from tgcf.web_ui.qr_login import render_qr_login
+    render_qr_login(root, account, login)

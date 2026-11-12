@@ -121,3 +121,9 @@ The web UI allows five login attempts per minute across browser sessions in a si
 All five Compose services block privilege escalation with `no-new-privileges` and drop the `NET_RAW` capability. Apply these settings to existing containers by recreating them with `docker compose up -d --no-build --force-recreate`. Restrict access to the application directory and protect configuration backups: Telegram session strings grant account access. These controls do not revoke previously stolen sessions; review active devices in Telegram separately.
 
 Run the offline login regression tests with `python3 -m unittest discover -s tests -p test_login_throttle.py`.
+
+### QR login without a larkbox monitor
+
+Open **Telegram Login** (primary account) or **Multi User** (additional accounts) on a PC. Expand **Log in with QR**, click **Generate new login QR**, then **Check login status / refresh QR display** to display it. On Android, select the intended Telegram account and open **Settings → Devices → Link Desktop Device** to scan and approve. Click **Check login status** again; if requested, submit the account's two-step verification password, then refresh status. Review the authorized account identity and click **Save this account session**.
+
+The server needs no monitor and no session-string copying. QR codes expire after about one minute; password entry times out after two minutes. Generating a replacement or cancelling stops the previous job. Credentials and temporary authorization state remain in the authenticated browser's server-side memory, not a public endpoint. Saved sessions use private state files; existing route assignments and offsets are retained. Known additional-account IDs must match, and concurrent credential changes are rejected before saving. Reloading/restarting the dashboard can interrupt an unfinished login; generate a new QR if needed.
